@@ -9,9 +9,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	uuid "github.com/satori/go.uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -22,45 +22,65 @@ var client *mongo.Client
 type Credentials struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
+	Type     string `json:"type"`
+}
+
+type Questionnaire struct {
+	Title     string   `json:"testName"`
+	Answers   []string `json:"answers"`
+	Questions []string `json:"questions"`
 }
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Headers", "AQccess-Control-Allow-Headers")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
 	var credentials Credentials
-	err := json.NewDecoder(r.Body).Decode(&credentials)
+	var result Credentials
 
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+	json.NewDecoder(r.Body).Decode(&credentials)
+	fmt.Println(credentials)
+
+	collection := client.Database("psyTest").Collection("users")
+	filter := bson.D{{"username", credentials.Username}}
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+
+	collection.FindOne(ctx, filter).Decode(&result)
+	fmt.Println(result.Password)
+
+	if result.Password == "" || credentials.Password != result.Password {
+		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	var userResult struct {
-		Value float64
-	}
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	err = client.Database("psyTest").Collection("Users").FindOne(ctx, bson.M{"username": credentials.Username}).Decode(&userResult)
+	mySigningKey := []byte(result.Username)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"admin": result.Type == "admin",
+	})
+	tokenString, err := token.SignedString(mySigningKey)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	fmt.Println(userResult)
-	// expectedPassword, ok := users[credentials.Username]
 
-	// if !ok || expectedPassword != credentials.Password {
-	// 	w.WriteHeader(http.StatusUnauthorized)
-	// 	return
-	// }
-
-	sessionToken := uuid.NewV4()
+	w.Write([]byte(tokenString))
 
 	http.SetCookie(w, &http.Cookie{
 		Name:    "session_token",
-		Value:   sessionToken.String(),
+		Value:   tokenString,
 		Expires: time.Now().Add(120 * time.Second),
 	})
+}
+
+func CreateTestHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+	var questionnaire Questionnaire
+
+	json.NewDecoder(r.Body).Decode(&questionnaire)
+	fmt.Println(questionnaire)
 }
 
 func initDB() {
@@ -79,6 +99,8 @@ func main() {
 	router := mux.NewRouter()
 
 	router.HandleFunc("/login", LoginHandler).Methods(http.MethodPost, http.MethodOptions)
+	router.HandleFunc("/create-questionnaire", CreateTestHandler).Methods(http.MethodPost, http.MethodOptions)
+
 	router.Use(mux.CORSMethodMiddleware(router))
 
 	log.Fatal(http.ListenAndServe(":3000", handlers.LoggingHandler(os.Stdout, router)))

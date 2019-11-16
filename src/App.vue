@@ -1,36 +1,58 @@
 <template>
-  <Login v-on:submitted="handleLogin" />
+  <div>
+    <Login
+      v-if="!authenticated"
+      v-bind:is-authenticated="authenticated"
+      v-on:submitted="handleLogin"
+    />
+    <DashBoard v-if="authenticated" v-bind:user="decoded" />
+  </div>
 </template>
 
 <script>
 import Login from "./components/Login";
-// import Questionnaire from "./components/Questionnaire";
-// import DashBoard from './components/DashBoard'
+import DashBoard from "./components/DashBoard";
 
 export default {
+  data() {
+    return {
+      authenticated: false,
+      decoded: ""
+    };
+  },
   components: {
-    Login
-    // Questionnaire
-    // DashBoard,
+    Login,
+    DashBoard
   },
   methods: {
     handleLogin(event) {
       const axios = require("axios");
-      /*eslint-disable */
+      const jwtDecode = require("jwt-decode");
 
-      console.log(event);
+      const axiosParams = {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Accept: "application/json"
+        }
+      };
       axios
-        .post("http://localhost:3000/login", {
-          username: event[0],
-          password: event[1]
-        })
+        .post(
+          "http://localhost:3000/login",
+          {
+            username: event[0],
+            password: event[1]
+          },
+          axiosParams
+        )
         .then(response => {
-          console.log(response);
+          this.authenticated = true;
+          this.decoded = jwtDecode(response.data);
         })
         .catch(error => {
-          console.error(error);
+          if (error.response.status === 401) {
+            this.authenticated = false;
+          }
         });
-      /*eslint-disable */
     }
   }
 };

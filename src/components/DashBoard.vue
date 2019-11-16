@@ -2,7 +2,7 @@
   <a-layout style="height: 100vh" id="components-layout-custom-trigger">
     <a-layout-sider :trigger="null" collapsible v-model="collapsed">
       <div class="logo" />
-      <a-menu theme="dark" mode="inline" :defaultSelectedKeys="['1']">
+      <a-menu @click="handleClick" theme="dark" mode="inline" :defaultSelectedKeys="['1']">
         <a-sub-menu key="sub1">
           <span slot="title">
             <a-icon type="solution" />
@@ -28,16 +28,39 @@
       </a-layout-header>
       <a-layout-content
         :style="{ margin: '24px 16px', padding: '24px', background: '#fff', minHeight: '280px' }"
-      >Content</a-layout-content>
+      >
+        <a-empty v-if="selectedOption === '0'" />
+        <NewQuestionnaire v-on:submitted="handleDone" v-if="selectedOption === '1'" />
+        <h1 v-if="selectedOption === '2'">Modificar</h1>
+        <h1 v-if="selectedOption === '3'">Eliminar</h1>
+        <h1 v-if="selectedOption === 'sub2'">Usuarios</h1>
+      </a-layout-content>
     </a-layout>
   </a-layout>
 </template>
 <script>
+import NewQuestionnaire from './NewQuestionnaire'
+
 export default {
+  props: {
+    user: Object
+  },
+  components: {
+    NewQuestionnaire,
+  },
   data() {
     return {
-      collapsed: false
+      collapsed: false,
+      selectedOption: "0",
     };
+  },
+  methods: {
+    handleClick(e) {
+      this.selectedOption = e.key
+    },
+    handleDone() {
+      
+    }
   }
 };
 </script>

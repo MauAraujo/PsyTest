@@ -22,15 +22,19 @@
 
 <script>
 export default {
+  props: {
+    isAuthenticated: Boolean,
+  },
   data() {
     return {
       userName: "",
       password: "",
+      authenticated: this.isAuthenticated
     };
   },
   methods: {
     validate() {
-      this.$emit('submitted', [this.userName, this.password])
+      this.$emit("submitted", [this.userName, this.password]);
     }
   }
 };
