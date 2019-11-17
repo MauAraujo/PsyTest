@@ -2,15 +2,14 @@
   <a-layout style="height: 100vh" id="components-layout-custom-trigger">
     <a-layout-sider :trigger="null" collapsible v-model="collapsed">
       <div class="logo" />
-      <a-menu @click="handleClick" theme="dark" mode="inline" :defaultSelectedKeys="['1']">
+      <a-menu @click="handleClick" theme="dark" mode="inline" :defaultSelectedKeys="['0']">
         <a-sub-menu key="sub1">
           <span slot="title">
             <a-icon type="solution" />
             <span>Instrumentos</span>
           </span>
-          <a-menu-item key="1">Crear</a-menu-item>
-          <a-menu-item key="2">Modificar</a-menu-item>
-          <a-menu-item key="3">Eliminar</a-menu-item>
+          <a-menu-item key="0">Ver todos</a-menu-item>
+          <a-menu-item key="1">Nuevo</a-menu-item>
         </a-sub-menu>
         <a-menu-item key="sub2">
           <a-icon type="user" />

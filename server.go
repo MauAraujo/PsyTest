@@ -28,11 +28,12 @@ type User struct {
 }
 
 type Questionnaire struct {
-	Title     string             `json:"testName"`
-	Answers   []string           `json:"answers"`
-	Questions []string           `json:"questions"`
-	Uid       primitive.ObjectID `bson:"_uid,omitempty"`
-	ID        primitive.ObjectID `bson:"_id,omitempty"`
+	Title       string             `json:"testName"`
+	Description string             `json:"description"`
+	Answers     []string           `json:"answers"`
+	Questions   []string           `json:"questions"`
+	Uid         primitive.ObjectID `bson:"_uid,omitempty"`
+	ID          primitive.ObjectID `bson:"_id,omitempty"`
 }
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
@@ -76,7 +77,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func CreateTestHandler(w http.ResponseWriter, r *http.Request) {
+func CreateQuestionnaireHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
@@ -90,7 +91,7 @@ func CreateTestHandler(w http.ResponseWriter, r *http.Request) {
 
 	uid, _ := primitive.ObjectIDFromHex(questionnaire.Uid.Hex())
 
-	_, err := collection.InsertOne(ctx, bson.M{"_uid": uid, "testName": questionnaire.Title, "questions": questionnaire.Questions, "answers": questionnaire.Answers})
+	_, err := collection.InsertOne(ctx, bson.M{"_uid": uid, "testName": questionnaire.Title, "description": questionnaire.Description, "questions": questionnaire.Questions, "answers": questionnaire.Answers})
 	if err != nil {
 		log.Fatal("Error creating new questionnaire")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -134,6 +135,33 @@ func GetUserQuestionnairesHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func QuestionnaireHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	v := mux.Vars(r)
+	qid := v["qid"]
+
+	var result Questionnaire
+	collection := client.Database("psyTest").Collection("Questionnaires")
+	id, _ := primitive.ObjectIDFromHex(qid)
+	filter := bson.D{{"_id", id}}
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+
+	if r.Method == "GET" {
+		collection.FindOne(ctx, filter).Decode(&result)
+		fmt.Println(result)
+	} else if r.Method == "DELETE" {
+		deleteResult, err := collection.DeleteOne(ctx, filter)
+
+		if err != nil {
+			log.Fatal(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		fmt.Printf("Deleted %v documents in the questionnaires collection\n", deleteResult.DeletedCount)
+	}
+}
+
 func initDB() {
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	mclient, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017"))
@@ -150,8 +178,9 @@ func main() {
 	router := mux.NewRouter()
 
 	router.HandleFunc("/login", LoginHandler).Methods(http.MethodPost, http.MethodOptions)
-	router.HandleFunc("/create-questionnaire", CreateTestHandler).Methods(http.MethodPost, http.MethodOptions)
+	router.HandleFunc("/create-questionnaire", CreateQuestionnaireHandler).Methods(http.MethodPost, http.MethodOptions)
 	router.HandleFunc("/user/{uid}/questionnaires", GetUserQuestionnairesHandler).Methods(http.MethodGet, http.MethodOptions)
+	router.HandleFunc("/user/{uid}/questionnaires/{qid}", QuestionnaireHandler).Methods(http.MethodGet, http.MethodDelete, http.MethodOptions)
 
 	router.Use(mux.CORSMethodMiddleware(router))
 

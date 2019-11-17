@@ -28,6 +28,19 @@
               allowClear
             />
           </a-form-item>
+          <a-form-item
+            :label-col="{ span: 5 }"
+            :wrapper-col="{ span: 12 }"
+            label="Descripción del instrumento"
+          >
+            <a-textarea
+              :autosize="{ minRows: 2, maxRows: 6 }"
+              v-decorator="['description', { 
+                validateTrigger: ['change', 'blur'],
+                rules: [{ required: true, message: 'La descripción es obligatoria' }] }]"
+              allowClear
+            />
+          </a-form-item>
         </a-form>
       </div>
       <!-- Step 2  -->
@@ -70,7 +83,7 @@
           <a-form-item
             v-for="(k) in questionsForm.getFieldValue('keys')"
             :key="k"
-            :wrapper-col="{ span: 12 }"
+            :wrapper-col="{ span: 18 }"
             :label-col="{ span: 6 }"
             label=" Pregunta"
             :required="false"
@@ -118,19 +131,27 @@
               <a-input disabled :defaultValue="nameForm.getFieldValue('testName')" />
             </a-col>
           </a-row>
+          <a-row :gutter="8">
+            <a-col :span="8">
+              <h3>Descripción del instrumento:</h3>
+            </a-col>
+            <a-col :span="12">
+              <a-input disabled :defaultValue="nameForm.getFieldValue('description')" />
+            </a-col>
+          </a-row>
           <a-divider />
           <a-row
             v-for="(question) in questionsForm.getFieldValue('questions')"
             :key="questionsForm.getFieldValue('questions').indexOf(question)"
             :gutter="8"
           >
-            <a-col :span="6">
+            <a-col :span="4">
               <h3>Pregunta {{ questionsForm.getFieldValue('questions').indexOf(question) + 1 }}</h3>
             </a-col>
             <a-col :span="10">
               <a-input disabled :defaultValue="question" />
             </a-col>
-            <a-col :span="8">
+            <a-col :span="10">
               <a-radio-group>
                 <a-radio-button>{{ questionsForm.getFieldValue('answer1') }}</a-radio-button>
                 <a-radio-button>{{ questionsForm.getFieldValue('answer2') }}</a-radio-button>
@@ -201,6 +222,10 @@ export default {
       initialValue: "",
       preserve: true
     });
+    this.nameForm.getFieldDecorator("description", {
+      initialValue: "",
+      preserve: true
+    });
   },
   methods: {
     next() {
@@ -212,6 +237,7 @@ export default {
           this.handleSubmit(this.questionsForm);
           this.finalValue = {
             testName: this.nameForm.getFieldValue("testName"),
+            description: this.nameForm.getFieldValue("description"),
             questions: this.questionsForm.getFieldValue("questions"),
             answers: [
               this.questionsForm.getFieldValue("answer1"),
@@ -245,25 +271,19 @@ export default {
     },
     remove(k) {
       const { questionsForm } = this;
-      // can use data-binding to get
       const keys = questionsForm.getFieldValue("keys");
-      // We need at least one passenger
       if (keys.length === 1) {
         return;
       }
 
-      // can use data-binding to set
       questionsForm.setFieldsValue({
         keys: keys.filter(key => key !== k)
       });
     },
     add() {
       const { questionsForm } = this;
-      // can use data-binding to get
       const keys = questionsForm.getFieldValue("keys");
       const nextKeys = keys.concat(id++);
-      // can use data-binding to set
-      // important! notify form to detect changes
       questionsForm.setFieldsValue({
         keys: nextKeys
       });
@@ -282,6 +302,7 @@ export default {
           "http://localhost:3000/create-questionnaire",
           {
             testName: this.finalValue.testName,
+            description: this.finalValue.description,
             questions: this.finalValue.questions,
             answers: this.finalValue.answers,
             uid: this.user.uid
