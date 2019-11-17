@@ -161,6 +161,9 @@
 <script>
 let id = 0;
 export default {
+  props: {
+    user: Object
+  },
   data() {
     return {
       current: 0,
@@ -168,7 +171,7 @@ export default {
       finalValue: Object,
       ModalText: "¿Estás seguro que quieres guardar el instrumento?",
       visible: false,
-      confirmLoading: false,
+      confirmLoading: false
     };
   },
   beforeCreate() {
@@ -274,25 +277,23 @@ export default {
             Accept: "application/json"
           }
         };
-        /*eslint-disable*/
 
         return axios.post(
           "http://localhost:3000/create-questionnaire",
           {
             testName: this.finalValue.testName,
             questions: this.finalValue.questions,
-            answers: this.finalValue.answers
+            answers: this.finalValue.answers,
+            uid: this.user.uid
           },
           axiosParams
         );
-        /*eslint-disable*/
       }
     },
     showModal() {
       this.visible = true;
     },
     handleOk() {
-      this.ModalText = "Guardando instrumento";
       this.confirmLoading = true;
       this.createTest()
         .then(response => {
@@ -302,7 +303,7 @@ export default {
             this.$emit("done");
           }
         })
-        .catch(error => {
+        .catch(() => {
           this.visible = false;
           this.confirmLoading = false;
         });

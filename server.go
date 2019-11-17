@@ -13,42 +13,44 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var client *mongo.Client
 
-type Credentials struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Type     string `json:"type"`
+type User struct {
+	Username string             `json:"username"`
+	Password string             `json:"password"`
+	Type     string             `json:"type"`
+	ID       primitive.ObjectID `bson:"_id,omitempty"`
 }
 
 type Questionnaire struct {
-	Title     string   `json:"testName"`
-	Answers   []string `json:"answers"`
-	Questions []string `json:"questions"`
+	Title     string             `json:"testName"`
+	Answers   []string           `json:"answers"`
+	Questions []string           `json:"questions"`
+	Uid       primitive.ObjectID `bson:"_uid,omitempty"`
+	ID        primitive.ObjectID `bson:"_id,omitempty"`
 }
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
-	var credentials Credentials
-	var result Credentials
+	var user User
+	var result User
+	json.NewDecoder(r.Body).Decode(&user)
 
-	json.NewDecoder(r.Body).Decode(&credentials)
-	fmt.Println(credentials)
-
-	collection := client.Database("psyTest").Collection("users")
-	filter := bson.D{{"username", credentials.Username}}
+	collection := client.Database("psyTest").Collection("Users")
+	filter := bson.D{{"username", user.Username}}
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 
 	collection.FindOne(ctx, filter).Decode(&result)
-	fmt.Println(result.Password)
+	fmt.Println(result)
 
-	if result.Password == "" || credentials.Password != result.Password {
+	if result.Password == "" || user.Password != result.Password {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -56,6 +58,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	mySigningKey := []byte(result.Username)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"admin": result.Type == "admin",
+		"uid":   result.ID,
 	})
 	tokenString, err := token.SignedString(mySigningKey)
 
@@ -81,6 +84,54 @@ func CreateTestHandler(w http.ResponseWriter, r *http.Request) {
 
 	json.NewDecoder(r.Body).Decode(&questionnaire)
 	fmt.Println(questionnaire)
+
+	collection := client.Database("psyTest").Collection("Questionnaires")
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+
+	uid, _ := primitive.ObjectIDFromHex(questionnaire.Uid.Hex())
+
+	_, err := collection.InsertOne(ctx, bson.M{"_uid": uid, "testName": questionnaire.Title, "questions": questionnaire.Questions, "answers": questionnaire.Answers})
+	if err != nil {
+		log.Fatal("Error creating new questionnaire")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}
+
+func GetUserQuestionnairesHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	v := mux.Vars(r)
+	uid, _ := primitive.ObjectIDFromHex(v["uid"])
+
+	collection := client.Database("psyTest").Collection("Questionnaires")
+	filter := bson.D{{"_uid", uid}}
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+
+	cur, err := collection.Find(ctx, filter)
+
+	if err != nil {
+		log.Fatal("Error querying user questionnaires")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer cur.Close(ctx)
+
+	var results []map[string]interface{}
+	for cur.Next(ctx) {
+		var result bson.M
+		err := cur.Decode(&result)
+		if err != nil {
+			log.Fatal(err)
+		}
+		results = append(results, result)
+	}
+	// var results []Questionnaire
+	// cur.All(ctx, &results)
+
+	resJson, _ := json.Marshal(results)
+	w.Write(resJson)
+
 }
 
 func initDB() {
@@ -100,6 +151,7 @@ func main() {
 
 	router.HandleFunc("/login", LoginHandler).Methods(http.MethodPost, http.MethodOptions)
 	router.HandleFunc("/create-questionnaire", CreateTestHandler).Methods(http.MethodPost, http.MethodOptions)
+	router.HandleFunc("/user/{uid}/questionnaires", GetUserQuestionnairesHandler).Methods(http.MethodGet, http.MethodOptions)
 
 	router.Use(mux.CORSMethodMiddleware(router))
 

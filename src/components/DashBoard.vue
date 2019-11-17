@@ -29,8 +29,8 @@
       <a-layout-content
         :style="{ margin: '24px 16px', padding: '24px', background: '#fff', minHeight: '280px' }"
       >
-        <a-empty v-if="selectedOption === '0'" />
-        <NewQuestionnaire v-on:submitted="handleDone" v-if="selectedOption === '1'" />
+        <QuestionnaireList v-if="selectedOption === '0'" v-bind:user="user"/>
+        <NewQuestionnaire v-bind:user="user" v-on:done="handleDone" v-if="selectedOption === '1'" />
         <h1 v-if="selectedOption === '2'">Modificar</h1>
         <h1 v-if="selectedOption === '3'">Eliminar</h1>
         <h1 v-if="selectedOption === 'sub2'">Usuarios</h1>
@@ -39,7 +39,8 @@
   </a-layout>
 </template>
 <script>
-import NewQuestionnaire from './NewQuestionnaire'
+import NewQuestionnaire from "./NewQuestionnaire";
+import QuestionnaireList from "./QuestionnaireList";
 
 export default {
   props: {
@@ -47,19 +48,24 @@ export default {
   },
   components: {
     NewQuestionnaire,
+    QuestionnaireList
   },
   data() {
     return {
       collapsed: false,
-      selectedOption: "0",
+      selectedOption: "0"
     };
   },
   methods: {
     handleClick(e) {
-      this.selectedOption = e.key
+      this.selectedOption = e.key;
+      /*eslint-disable*/
+
+      console.log(this.user);
+      /*eslint-disable*/
     },
     handleDone() {
-      
+      this.selectedOption = "0";
     }
   }
 };
