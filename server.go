@@ -183,6 +183,6 @@ func main() {
 	router.HandleFunc("/user/{uid}/questionnaires/{qid}", QuestionnaireHandler).Methods(http.MethodGet, http.MethodDelete, http.MethodOptions)
 
 	router.Use(mux.CORSMethodMiddleware(router))
-
+	fmt.Println("Server listening on port 3000...")
 	log.Fatal(http.ListenAndServe(":3000", handlers.LoggingHandler(os.Stdout, router)))
 }
