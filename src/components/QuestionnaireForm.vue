@@ -80,16 +80,18 @@
             />
           </a-form-item>
           <a-divider>Ingresa las preguntas</a-divider>
-          <a-form-item
-            v-for="(k) in questionsForm.getFieldValue('keys')"
-            :key="k"
-            :wrapper-col="{ span: 18 }"
-            :label-col="{ span: 6 }"
-            label=" Pregunta"
-            :required="false"
-          >
-            <a-input
-              v-decorator="[
+
+          <div v-if="!edit">
+            <a-form-item
+              v-for="(k) in questionsForm.getFieldValue('keys')"
+              :key="k"
+              :wrapper-col="{ span: 18 }"
+              :label-col="{ span: 6 }"
+              label=" Pregunta"
+              :required="false"
+            >
+              <a-input
+                v-decorator="[
           `questions[${k}]`,
           {
             validateTrigger: ['change', 'blur'],
@@ -102,21 +104,31 @@
             ],
           },
         ]"
-              style="width: 60%; margin-right: 8px"
-            />
-            <a-icon
-              v-if="questionsForm.getFieldValue('keys').length > 1"
-              class="dynamic-delete-button"
-              type="minus-circle-o"
-              :disabled="questionsForm.getFieldValue('keys').length === 1"
-              @click="() => remove(k)"
-            />
-          </a-form-item>
-          <a-form-item :wrapper-col="{ span: 24 }">
-            <a-button type="dashed" style="width: 100%" @click="add">
-              <a-icon type="plus" />Agregar pregunta
-            </a-button>
-          </a-form-item>
+                style="width: 60%; margin-right: 8px"
+              />
+              <a-icon
+                v-if="questionsForm.getFieldValue('keys').length > 1"
+                class="dynamic-delete-button"
+                type="minus-circle-o"
+                :disabled="questionsForm.getFieldValue('keys').length === 1"
+                @click="() => remove(k)"
+              />
+            </a-form-item>
+            <a-form-item :wrapper-col="{ span: 24 }">
+              <a-button type="dashed" style="width: 100%" @click="add">
+                <a-icon type="plus" />Agregar pregunta
+              </a-button>
+            </a-form-item>
+          </div>
+
+          <div v-if="edit">
+            <a-form-item
+              v-for="(question) in questionsForm.getFieldValue('questions')"
+              :key="question"
+            >
+              <a-input :defaultValue="question" />
+            </a-form-item>
+          </div>
         </a-form>
       </div>
 
@@ -183,7 +195,9 @@
 let id = 0;
 export default {
   props: {
-    user: Object
+    user: Object,
+    questionnaire: Object,
+    edit: Boolean
   },
   data() {
     return {
@@ -198,6 +212,8 @@ export default {
   beforeCreate() {
     this.nameForm = this.$form.createForm(this, { name: "name" });
     this.questionsForm = this.$form.createForm(this, { name: "questionsForm" });
+    // this.editQuestions = this.$form.createForm(this, { name: "editQuestions" });
+
     this.questionsForm.getFieldDecorator("keys", {
       initialValue: [],
       preserve: true
@@ -226,6 +242,36 @@ export default {
       initialValue: "",
       preserve: true
     });
+  },
+  mounted() {
+    if (this.edit) {
+      this.nameForm.setFields({
+        testName: { value: this.questionnaire.testName },
+        description: { value: this.questionnaire.description }
+      });
+
+      let keys = [];
+      for (const key in this.questionnaire.questions) {
+        /*eslint-disable*/
+
+        console.log(key);
+        /*eslint-disable*/
+
+        keys.push(key);
+      }
+      this.questionsForm.getFieldDecorator("questions", {
+        initialValue: [],
+        preserve: true
+      });
+      this.questionsForm.setFields({
+        answer1: { value: this.questionnaire.answers[0] },
+        answer2: { value: this.questionnaire.answers[1] },
+        answer3: { value: this.questionnaire.answers[2] },
+        answer4: { value: this.questionnaire.answers[3] },
+        questions: { value: this.questionnaire.questions },
+        keys: { value: keys }
+      });
+    }
   },
   methods: {
     next() {
@@ -299,7 +345,30 @@ export default {
         };
 
         return axios.post(
-          "http://localhost:3000/create-questionnaire",
+          `http://localhost:3000/questionnaires/create`,
+          {
+            testName: this.finalValue.testName,
+            description: this.finalValue.description,
+            questions: this.finalValue.questions,
+            answers: this.finalValue.answers,
+            uid: this.user.uid
+          },
+          axiosParams
+        );
+      }
+    },
+    editTest() {
+      const axios = require("axios");
+      if (this.finalValue) {
+        const axiosParams = {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            Accept: "application/json"
+          }
+        };
+
+        return axios.patch(
+          `http://localhost:3000/questionnaires/edit/${this.questionnaire._id}`,
           {
             testName: this.finalValue.testName,
             description: this.finalValue.description,
@@ -316,18 +385,33 @@ export default {
     },
     handleOk() {
       this.confirmLoading = true;
-      this.createTest()
-        .then(response => {
-          if (response.status === 200) {
+      if (this.edit) {
+        this.editTest()
+          .then(response => {
+            if (response.status === 200) {
+              this.visible = false;
+              this.confirmLoading = false;
+              this.$emit("done");
+            }
+          })
+          .catch(() => {
             this.visible = false;
             this.confirmLoading = false;
-            this.$emit("done");
-          }
-        })
-        .catch(() => {
-          this.visible = false;
-          this.confirmLoading = false;
-        });
+          });
+      } else {
+        this.createTest()
+          .then(response => {
+            if (response.status === 200) {
+              this.visible = false;
+              this.confirmLoading = false;
+              this.$emit("done");
+            }
+          })
+          .catch(() => {
+            this.visible = false;
+            this.confirmLoading = false;
+          });
+      }
     },
     handleCancel() {
       this.visible = false;

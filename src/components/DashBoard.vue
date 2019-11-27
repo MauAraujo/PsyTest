@@ -1,71 +1,124 @@
 <template>
-  <a-layout style="height: 100vh" id="components-layout-custom-trigger">
-    <a-layout-sider :trigger="null" collapsible v-model="collapsed">
-      <div class="logo" />
-      <a-menu @click="handleClick" theme="dark" mode="inline" :defaultSelectedKeys="['0']">
-        <a-sub-menu key="sub1">
-          <span slot="title">
-            <a-icon type="solution" />
-            <span>Instrumentos</span>
-          </span>
-          <a-menu-item key="0">Ver todos</a-menu-item>
-          <a-menu-item key="1">Nuevo</a-menu-item>
-        </a-sub-menu>
-        <a-menu-item key="sub2">
-          <a-icon type="user" />
-          <span>Usuarios</span>
-        </a-menu-item>
-      </a-menu>
-    </a-layout-sider>
-    <a-layout>
-      <a-layout-header style="background: #fff; padding: 0">
-        <a-icon
-          class="trigger"
-          :type="collapsed ? 'menu-unfold' : 'menu-fold'"
-          @click="()=> collapsed = !collapsed"
-        />
-      </a-layout-header>
-      <a-layout-content
-        :style="{ margin: '24px 16px', padding: '24px', background: '#fff', minHeight: '280px' }"
-      >
-        <QuestionnaireList v-if="selectedOption === '0'" v-bind:user="user"/>
-        <NewQuestionnaire v-bind:user="user" v-on:done="handleDone" v-if="selectedOption === '1'" />
-        <h1 v-if="selectedOption === '2'">Modificar</h1>
-        <h1 v-if="selectedOption === '3'">Eliminar</h1>
-        <h1 v-if="selectedOption === 'sub2'">Usuarios</h1>
-      </a-layout-content>
+  <div>
+    <a-layout style="height: 100vh" id="components-layout-custom-trigger">
+      <a-layout-sider :trigger="null" collapsible v-model="collapsed">
+        <div class="logo" />
+        <a-menu @click="handleClick" theme="dark" mode="inline" :defaultSelectedKeys="['0']">
+          <a-sub-menu key="sub1">
+            <span slot="title">
+              <a-icon type="solution" />
+              <span>Instrumentos</span>
+            </span>
+            <a-menu-item key="0">Ver pruebas</a-menu-item>
+            <a-menu-item key="1">Crear prueba</a-menu-item>
+          </a-sub-menu>
+          <a-sub-menu key="sub2">
+            <span slot="title">
+              <a-icon type="user" />
+              <span>Usuarios</span>
+            </span>
+            <a-menu-item key="2">Ver pacientes</a-menu-item>
+            <a-menu-item key="3">Crear paciente</a-menu-item>
+          </a-sub-menu>
+        </a-menu>
+      </a-layout-sider>
+      <a-layout>
+        <a-layout-header
+          :style="[!viewQuestionnaire ? {background: '#fff', padding: 0} : {background: '#e8f8f8', padding: 0}]"
+        >
+          <a-icon
+            class="trigger"
+            :type="collapsed ? 'menu-unfold' : 'menu-fold'"
+            @click="()=> collapsed = !collapsed"
+          />
+        </a-layout-header>
+        <a-layout-content
+          :style="[!viewQuestionnaire ? { margin: '24px 16px', padding: '24px', background: '#fff', minHeight: '280px' } : {}]"
+        >
+          <Questionnaire
+            v-on:exit="handleExit"
+            v-if="viewQuestionnaire"
+            v-bind:questionnaire="questionnaire"
+            v-bind:preview="true"
+          />
+          <QuestionnaireForm
+            v-if="editQuestionnaire"
+            v-bind:user="user"
+            v-bind:edit="true"
+            v-on:done="handleDone"
+            v-bind:questionnaire="questionnaire"
+          />
+          <QuestionnaireList
+            v-if="selectedOption === '0' && !viewQuestionnaire && !editQuestionnaire"
+            v-bind:user="user"
+            v-on:edit="handleEdit"
+            v-on:get="handleGet"
+          />
+          <QuestionnaireForm
+            v-bind:user="user"
+            v-bind:edit="false"
+            v-on:done="handleDone"
+            v-if="selectedOption === '1' && !editQuestionnaire"
+          />
+          <div v-if="selectedOption === '2'"></div>
+          <div v-if="selectedOption === '3'">
+            <UserForm />
+          </div>
+        </a-layout-content>
+      </a-layout>
     </a-layout>
-  </a-layout>
+  </div>
 </template>
 <script>
-import NewQuestionnaire from "./NewQuestionnaire";
+import QuestionnaireForm from "./QuestionnaireForm";
 import QuestionnaireList from "./QuestionnaireList";
+import Questionnaire from "./Questionnaire";
+import UserForm from "./UserForm";
 
 export default {
   props: {
     user: Object
   },
   components: {
-    NewQuestionnaire,
-    QuestionnaireList
+    QuestionnaireForm,
+    Questionnaire,
+    QuestionnaireList,
+    UserForm
   },
   data() {
     return {
       collapsed: false,
-      selectedOption: "0"
+      selectedOption: "0",
+      editQuestionnaire: false,
+      viewQuestionnaire: false,
+      questionnaire: Object
     };
   },
   methods: {
-    handleClick(e) {
-      this.selectedOption = e.key;
-      /*eslint-disable*/
+    /*eslint-disable*/
 
-      console.log(this.user);
-      /*eslint-disable*/
+    handleClick(e) {
+      this.viewQuestionnaire = false;
+      this.editQuestionnaire = false;
+      this.selectedOption = e.key;
     },
     handleDone() {
+      this.editQuestionnaire = false;
+      this.viewQuestionnaire = false;
       this.selectedOption = "0";
+    },
+    handleEdit(event) {
+      this.editQuestionnaire = true;
+      this.questionnaire = event;
+    },
+    handleGet(event) {
+      this.viewQuestionnaire = true;
+      this.questionnaire = event;
+    },
+    handleExit() {
+      this.viewQuestionnaire = false;
     }
+    /*eslint-disable*/
   }
 };
 </script>

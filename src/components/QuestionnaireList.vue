@@ -5,26 +5,33 @@
     itemLayout="horizontal"
     :dataSource="questionnaires"
   >
-    <a-empty :v-if="questionnaires.length === 0" image="https://gw.alipayobjects.com/mdn/miniapp_social/afts/img/A*pevERLJC9v0AAAAAAAAAAABjAQAAAQ/original">
-      <span>No hay ningún instrumento. Crea uno y aparecerá aquí.</span>
-    </a-empty>
     <a-list-item slot="renderItem" slot-scope="item">
-      <a-icon class="action-icon" slot="actions" type="eye" />
-      <a-icon class="action-icon" slot="actions" type="edit" />
+      <a-icon class="action-icon" slot="actions" type="eye" @click="onSelect(item)" />
+      <a-icon class="action-icon" slot="actions" type="edit" @click="onEdit(item)" />
       <a-icon class="action-icon" slot="actions" type="delete" @click="showModal()" />
       <a-list-item-meta :description="item.description">
-        <a slot="title" href="https://vue.ant.design/">{{item.testName}}</a>
+        <a slot="title">{{item.testName}}</a>
       </a-list-item-meta>
+      <a-modal
+        title="Confirmar eliminación de instrumento"
+        :visible="visible"
+        @ok="handleOk(item)"
+        :confirmLoading="confirmLoading"
+        @cancel="handleCancel"
+      >
+        <template slot="footer">
+          <a-button key="back" @click="handleCancel">Regresar</a-button>
+          <a-button key="submit" type="primary" :loading="loading" @click="handleOk(item)">Aceptar</a-button>
+        </template>
+        <p>{{ModalText}}</p>
+      </a-modal>
     </a-list-item>
-    <a-modal
-      title="Confirmar eliminación de instrumento"
-      :visible="visible"
-      @ok="handleOk(item)"
-      :confirmLoading="confirmLoading"
-      @cancel="handleCancel"
+    <a-empty
+      v-if="questionnaires.length === 0"
+      image="https://gw.alipayobjects.com/mdn/miniapp_social/afts/img/A*pevERLJC9v0AAAAAAAAAAABjAQAAAQ/original"
     >
-      <p>{{ModalText}}</p>
-    </a-modal>
+      <span slot="description">No hay instrumentos. Cuando se cree uno aquí aparecerá.</span>
+    </a-empty>
   </a-list>
 </template>
 <script>
@@ -38,8 +45,7 @@ export default {
       loadingMore: false,
       showLoadingMore: true,
       questionnaires: [],
-      url: `http://localhost:3000/user/${this.user.uid}/questionnaires/`,
-      ModalText: "¿Estás seguro que quieres eliiminar el instrumento?",
+      ModalText: "¿Estás seguro que quieres eliminar el instrumento?",
       visible: false,
       confirmLoading: false
     };
@@ -49,9 +55,9 @@ export default {
   },
   methods: {
     /*eslint-disable*/
-
     onDelete(questionnaire) {
       const axios = require("axios");
+      console.log(questionnaire);
       const axiosParams = {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -61,15 +67,23 @@ export default {
 
       axios
         .delete(
-          `http://localhost:3000/user/${this.user.uid}/questionnaires/${questionnaire._id}`,
+          `http://localhost:3000/questionnaires/delete/${questionnaire._id}`,
           axiosParams
         )
         .then(response => {
           console.log(response);
+          this.visible = false;
+          this.getData();
         })
         .catch(error => {
           console.log(error);
         });
+    },
+    onEdit(questionnaire) {
+      this.$emit("edit", questionnaire);
+    },
+    onSelect(questionnaire) {
+      this.$emit("get", questionnaire);
     },
     getData() {
       const axios = require("axios");
@@ -82,7 +96,7 @@ export default {
       /*eslint-disable*/
       axios
         .get(
-          `http://localhost:3000/user/${this.user.uid}/questionnaires`,
+          `http://localhost:3000/questionnaires/get`,
           axiosParams
         )
         .then(response => {
@@ -96,6 +110,7 @@ export default {
       /*eslint-disable*/
     },
     handleOk(questionnaire) {
+      console.log(questionnaire);
       this.confirmLoading = true;
       this.onDelete(questionnaire);
     },

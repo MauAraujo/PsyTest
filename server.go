@@ -99,6 +99,81 @@ func CreateQuestionnaireHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func GetQuestionnaireHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+	collection := client.Database("psyTest").Collection("Questionnaires")
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+
+	cur, err := collection.Find(ctx, bson.D{})
+	if err != nil {
+		log.Fatal("Error querying questionnaires")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer cur.Close(ctx)
+
+	var results []map[string]interface{}
+	for cur.Next(ctx) {
+		var result bson.M
+		err := cur.Decode(&result)
+		if err != nil {
+			log.Fatal(err)
+		}
+		results = append(results, result)
+	}
+	resJson, _ := json.Marshal(results)
+	w.Write(resJson)
+}
+
+func DeleteQuestionnaireHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	v := mux.Vars(r)
+	qid, _ := primitive.ObjectIDFromHex(v["qid"])
+
+	collection := client.Database("psyTest").Collection("Questionnaires")
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	filter := bson.D{{"_id", qid}}
+
+	deleteResult, err := collection.DeleteOne(ctx, filter)
+
+	if err != nil {
+		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	fmt.Printf("Deleted %v documents in the questionnaires collection\n", deleteResult.DeletedCount)
+}
+
+func EditQuestionnaireHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	v := mux.Vars(r)
+	qid, _ := primitive.ObjectIDFromHex(v["qid"])
+
+	var questionnaire Questionnaire
+
+	collection := client.Database("psyTest").Collection("Questionnaires")
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	filter := bson.D{{"_id", qid}}
+
+	json.NewDecoder(r.Body).Decode(&questionnaire)
+	uid, _ := primitive.ObjectIDFromHex(questionnaire.Uid.Hex())
+
+	update := bson.D{
+		{"$set", bson.M{"_uid": uid, "testName": questionnaire.Title, "description": questionnaire.Description, "questions": questionnaire.Questions, "answers": questionnaire.Answers}},
+	}
+	updateResult, err := collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		log.Fatal("Error updating new questionnaire")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	fmt.Printf("Matched %v documents and updated %v documents.\n", updateResult.MatchedCount, updateResult.ModifiedCount)
+}
+
 func GetUserQuestionnairesHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
@@ -135,21 +210,28 @@ func GetUserQuestionnairesHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func QuestionnaireHandler(w http.ResponseWriter, r *http.Request) {
+func UserQuestionnaireHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	v := mux.Vars(r)
 	qid := v["qid"]
 
-	var result Questionnaire
 	collection := client.Database("psyTest").Collection("Questionnaires")
 	id, _ := primitive.ObjectIDFromHex(qid)
 	filter := bson.D{{"_id", id}}
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 
 	if r.Method == "GET" {
-		collection.FindOne(ctx, filter).Decode(&result)
-		fmt.Println(result)
+		dbresult := collection.FindOne(ctx, filter)
+		var result bson.M
+		err := dbresult.Decode(&result)
+		questionnaire, err := json.Marshal(result)
+
+		if err != nil {
+			log.Fatal("Error getting questionnaire")
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		w.Write(questionnaire)
 	} else if r.Method == "DELETE" {
 		deleteResult, err := collection.DeleteOne(ctx, filter)
 
@@ -178,9 +260,13 @@ func main() {
 	router := mux.NewRouter()
 
 	router.HandleFunc("/login", LoginHandler).Methods(http.MethodPost, http.MethodOptions)
-	router.HandleFunc("/create-questionnaire", CreateQuestionnaireHandler).Methods(http.MethodPost, http.MethodOptions)
-	router.HandleFunc("/user/{uid}/questionnaires", GetUserQuestionnairesHandler).Methods(http.MethodGet, http.MethodOptions)
-	router.HandleFunc("/user/{uid}/questionnaires/{qid}", QuestionnaireHandler).Methods(http.MethodGet, http.MethodDelete, http.MethodOptions)
+	router.HandleFunc("/users/create", CreateQuestionnaireHandler).Methods(http.MethodPost, http.MethodOptions)
+	router.HandleFunc("/questionnaires/create", CreateQuestionnaireHandler).Methods(http.MethodPost, http.MethodOptions)
+	router.HandleFunc("/questionnaires/get", CreateQuestionnaireHandler).Methods(http.MethodGet, http.MethodOptions)
+	router.HandleFunc("/questionnaires/edit/{qid}/", GetQuestionnaireHandler).Methods(http.MethodPatch, http.MethodOptions)
+	router.HandleFunc("/questionnaires/delete/{qid}/", DeleteQuestionnaireHandler).Methods(http.MethodPatch, http.MethodOptions)
+	router.HandleFunc("/users/{uid}/questionnaires", GetUserQuestionnairesHandler).Methods(http.MethodGet, http.MethodOptions)
+	router.HandleFunc("/users/{uid}/questionnaires/{qid}", UserQuestionnaireHandler).Methods(http.MethodGet, http.MethodDelete, http.MethodPatch, http.MethodPost, http.MethodOptions)
 
 	router.Use(mux.CORSMethodMiddleware(router))
 	fmt.Println("Server listening on port 3000...")
