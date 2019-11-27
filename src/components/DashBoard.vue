@@ -60,9 +60,11 @@
             v-on:done="handleDone"
             v-if="selectedOption === '1' && !editQuestionnaire"
           />
-          <div v-if="selectedOption === '2'"></div>
+          <div v-if="selectedOption === '2'">
+            <UserList />
+          </div>
           <div v-if="selectedOption === '3'">
-            <UserForm />
+            <UserForm v-on:done="handleUserDone" />
           </div>
         </a-layout-content>
       </a-layout>
@@ -73,6 +75,7 @@
 import QuestionnaireForm from "./QuestionnaireForm";
 import QuestionnaireList from "./QuestionnaireList";
 import Questionnaire from "./Questionnaire";
+import UserList from "./UserList";
 import UserForm from "./UserForm";
 
 export default {
@@ -83,6 +86,7 @@ export default {
     QuestionnaireForm,
     Questionnaire,
     QuestionnaireList,
+    UserList,
     UserForm
   },
   data() {
@@ -106,6 +110,9 @@ export default {
       this.editQuestionnaire = false;
       this.viewQuestionnaire = false;
       this.selectedOption = "0";
+    },
+    handleUserDone() {
+      this.selectedOption = "2";
     },
     handleEdit(event) {
       this.editQuestionnaire = true;

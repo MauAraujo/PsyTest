@@ -3,49 +3,45 @@
     class="loadmore-list"
     :loading="loading"
     itemLayout="horizontal"
-    :dataSource="questionnaires"
+    :dataSource="users"
   >
-    <a-list-item slot="renderItem" slot-scope="item">
-      <a-icon class="action-icon" slot="actions" type="eye" @click="onSelect(item)" />
-      <a-icon class="action-icon" slot="actions" type="edit" @click="onEdit(item)" />
+    <a-list-item slot="renderItem" slot-scope="user">
+      <a-icon class="action-icon" slot="actions" type="edit" @click="onEdit(user)" />
       <a-icon class="action-icon" slot="actions" type="delete" @click="showModal()" />
-      <a-list-item-meta :description="item.description">
-        <a slot="title">{{item.testName}}</a>
+      <a-list-item-meta :description="user.type">
+        <a slot="title">{{user.firstName}}</a>
       </a-list-item-meta>
       <a-modal
-        title="Confirmar eliminación de instrumento"
+        title="Confirmar eliminación de usuario"
         :visible="visible"
-        @ok="handleOk(item)"
+        @ok="handleOk(user)"
         :confirmLoading="confirmLoading"
         @cancel="handleCancel"
       >
         <template slot="footer">
           <a-button key="back" @click="handleCancel">Regresar</a-button>
-          <a-button key="submit" type="primary" :loading="loading" @click="handleOk(item)">Aceptar</a-button>
+          <a-button key="submit" type="primary" :loading="loading" @click="handleOk(user)">Aceptar</a-button>
         </template>
         <p>{{ModalText}}</p>
       </a-modal>
     </a-list-item>
     <a-empty
-      v-if="questionnaires.length === 0"
+      v-if="users.length === 0"
       image="https://gw.alipayobjects.com/mdn/miniapp_social/afts/img/A*pevERLJC9v0AAAAAAAAAAABjAQAAAQ/original"
     >
-      <span slot="description">No hay instrumentos. Cuando se cree uno aquí aparecerá.</span>
+      <span slot="description">No hay usuarios. Cuando se cree uno aquí aparecerá.</span>
     </a-empty>
   </a-list>
 </template>
 <script>
 export default {
-  props: {
-    user: Object
-  },
   data() {
     return {
       loading: true,
       loadingMore: false,
       showLoadingMore: true,
-      questionnaires: [],
-      ModalText: "¿Estás seguro que quieres eliminar el instrumento?",
+      users: [],
+      ModalText: "¿Estás seguro que quieres eliminar la información del paciente?",
       visible: false,
       confirmLoading: false
     };
@@ -55,9 +51,9 @@ export default {
   },
   methods: {
     /*eslint-disable*/
-    onDelete(questionnaire) {
+    onDelete(user) {
       const axios = require("axios");
-      console.log(questionnaire);
+      console.log(user);
       const axiosParams = {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -67,9 +63,9 @@ export default {
 
       axios
         .delete(
-          `http://localhost:3000/questionnaires/delete/${questionnaire._id}`,
+          `http://localhost:3000/users/delete/${user._id}`,
           {
-            qid: questionnaire.id
+            qid: user.id
           },
           axiosParams
         )
@@ -82,11 +78,8 @@ export default {
           console.log(error);
         });
     },
-    onEdit(questionnaire) {
-      this.$emit("edit", questionnaire);
-    },
-    onSelect(questionnaire) {
-      this.$emit("get", questionnaire);
+    onEdit(user) {
+      this.$emit("edit", user);
     },
     getData() {
       const axios = require("axios");
@@ -98,21 +91,21 @@ export default {
       };
       /*eslint-disable*/
       axios
-        .get(`http://localhost:3000/questionnaires/get`, axiosParams)
+        .get(`http://localhost:3000/users/get`, axiosParams)
         .then(response => {
           console.log(response);
           this.loading = false;
-          this.questionnaires = response.data !== null ? response.data : [];
+          this.users = response.data !== null ? response.data : [];
         })
         .catch(error => {
           console.log(error);
         });
       /*eslint-disable*/
     },
-    handleOk(questionnaire) {
-      console.log(questionnaire);
+    handleOk(user) {
+      console.log(user);
       this.confirmLoading = true;
-      this.onDelete(questionnaire);
+      this.onDelete(user);
     },
     handleCancel() {
       this.visible = false;

@@ -47,10 +47,10 @@
       />
     </a-form-item>
     <a-row>
-      <a-col :span="12">
+      <a-col :span="7">
         <a-form-item
-          :label-col="{ span: 10 }"
-          :wrapper-col="{ span: 12 }"
+          :label-col="{ span: 12 }"
+          :wrapper-col="{ span: 8 }"
           v-bind="formItemLayout"
           label="Edad"
         >
@@ -65,10 +65,10 @@
           />
         </a-form-item>
       </a-col>
-      <a-col :span="12">
+      <a-col :span="7">
         <a-form-item
-          :label-col="{ span: 6 }"
-          :wrapper-col="{ span: 12 }"
+          :label-col="{ span: 8 }"
+          :wrapper-col="{ span: 8 }"
           v-bind="formItemLayout"
           label="Género"
         >
@@ -82,6 +82,26 @@
           >
             <a-select-option value="M">M</a-select-option>
             <a-select-option value="F">F</a-select-option>
+          </a-select>
+        </a-form-item>
+      </a-col>
+      <a-col :span="8">
+        <a-form-item
+          :label-col="{ span: 6 }"
+          :wrapper-col="{ span: 8 }"
+          v-bind="formItemLayout"
+          label="Tipo"
+        >
+          <a-select
+            v-decorator="['type',
+            {
+                rules: [{ required: true, message: 'Ingresa el tipo de usuario.' }]
+            },
+            { initialValue: '86' }]"
+            style="width: 120px"
+          >
+            <a-select-option value="admin">Administrador</a-select-option>
+            <a-select-option value="patient">Paciente</a-select-option>
           </a-select>
         </a-form-item>
       </a-col>
@@ -181,12 +201,41 @@ export default {
   },
   methods: {
     handleSubmit(e) {
+      const axios = require("axios");
       e.preventDefault();
       this.form.validateFieldsAndScroll((err, values) => {
         if (!err) {
           /*eslint-disable*/
-
           console.log("Received values of form: ", values);
+          const axiosParams = {
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+              Accept: "application/json"
+            }
+          };
+
+          axios
+            .post(
+              `http://localhost:3000/users/create`,
+              {
+                firstName: values.firstName,
+                middleName: values.middleName,
+                lastName: values.lastName,
+                age: values.age,
+                gender: values.gender,
+                type: values.type,
+                username: values.username,
+                password: values.password
+              },
+              axiosParams
+            )
+            .then(res => {
+              console.log(result);
+              this.$emit("done");
+            })
+            .catch(err => {
+              console.log(err);
+            });
           /*eslint-disable*/
         }
       });
