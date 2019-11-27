@@ -37,6 +37,7 @@ type Questionnaire struct {
 	Description string             `json:"description"`
 	Answers     []string           `json:"answers"`
 	Questions   []string           `json:"questions"`
+	Index       int                `json:"index"`
 	Uid         primitive.ObjectID `bson:"_uid,omitempty"`
 	ID          primitive.ObjectID `bson:"_id,omitempty"`
 }
@@ -62,8 +63,9 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	mySigningKey := []byte(result.Username)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"admin": result.Type == "admin",
-		"uid":   result.ID,
+		"admin":   result.Type == "admin",
+		"patient": result.Type == "patient",
+		"uid":     result.ID,
 	})
 	tokenString, err := token.SignedString(mySigningKey)
 
@@ -135,6 +137,7 @@ func GetUserHandler(w http.ResponseWriter, r *http.Request) {
 		results = append(results, result)
 	}
 	resJson, _ := json.Marshal(results)
+	fmt.Println(resJson)
 	w.Write(resJson)
 }
 
@@ -169,30 +172,22 @@ func EditUserHandler(w http.ResponseWriter, r *http.Request) {
 func DeleteUserHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	v := mux.Vars(r)
 
-	var user User
-
-	json.NewDecoder(r.Body).Decode(&user)
-	fmt.Println(user)
-
+	uid, _ := primitive.ObjectIDFromHex(v["uid"])
+	fmt.Println("Deleting " + uid.String())
 	collection := client.Database("psyTest").Collection("Users")
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	filter := bson.D{{"_id", uid}}
 
-	_, err := collection.InsertOne(ctx, bson.M{
-		"firstName":  user.FirstName,
-		"middleName": user.MiddleName,
-		"lastName":   user.LastName,
-		"age":        user.Age,
-		"gender":     user.Gender,
-		"type":       user.Type,
-		"username":   user.Username,
-		"password":   user.Password})
+	deleteResult, err := collection.DeleteOne(ctx, filter)
+
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+	fmt.Printf("Deleted %v documents in the users collection\n", deleteResult.DeletedCount)
 }
 func CreateQuestionnaireHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -292,20 +287,49 @@ func EditQuestionnaireHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("Matched %v documents and updated %v documents.\n", updateResult.MatchedCount, updateResult.ModifiedCount)
 }
 
+func CreateUserQuestionnaireHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	v := mux.Vars(r)
+	uid, _ := primitive.ObjectIDFromHex(v["uid"])
+
+	var questionnaire Questionnaire
+
+	json.NewDecoder(r.Body).Decode(&questionnaire)
+	fmt.Println(questionnaire)
+
+	collection := client.Database("psyTest").Collection("Results")
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+
+	_, err := collection.InsertOne(ctx, bson.M{
+		"_uid":        uid,
+		"testName":    questionnaire.Title,
+		"description": questionnaire.Description,
+		"questions":   questionnaire.Questions,
+		"answers":     questionnaire.Answers,
+		"index":       questionnaire.Index})
+
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}
+
 func GetUserQuestionnairesHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	v := mux.Vars(r)
 	uid, _ := primitive.ObjectIDFromHex(v["uid"])
 
-	collection := client.Database("psyTest").Collection("Questionnaires")
+	collection := client.Database("psyTest").Collection("Results")
 	filter := bson.D{{"_uid", uid}}
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 
 	cur, err := collection.Find(ctx, filter)
 
 	if err != nil {
-		log.Println("Error querying user questionnaires")
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -388,6 +412,7 @@ func main() {
 	router.HandleFunc("/questionnaires/edit/{qid}/", EditQuestionnaireHandler).Methods(http.MethodPatch, http.MethodOptions)
 	router.HandleFunc("/questionnaires/delete/{qid}/", DeleteQuestionnaireHandler).Methods(http.MethodDelete, http.MethodOptions)
 	router.HandleFunc("/users/{uid}/questionnaires", GetUserQuestionnairesHandler).Methods(http.MethodGet, http.MethodOptions)
+	router.HandleFunc("/users/{uid}/create/questionnaires", CreateUserQuestionnaireHandler).Methods(http.MethodPost, http.MethodOptions)
 	router.HandleFunc("/users/{uid}/questionnaires/{qid}", UserQuestionnaireHandler).Methods(http.MethodGet, http.MethodDelete, http.MethodPatch, http.MethodPost, http.MethodOptions)
 
 	router.Use(mux.CORSMethodMiddleware(router))

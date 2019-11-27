@@ -3,7 +3,14 @@
     <a-layout style="height: 100vh" id="components-layout-custom-trigger">
       <a-layout-sider :trigger="null" collapsible v-model="collapsed">
         <div class="logo" />
-        <a-menu @click="handleClick" theme="dark" mode="inline" :defaultSelectedKeys="['0']">
+        <!-- Admin Menu -->
+        <a-menu
+          v-if="user.admin"
+          @click="handleClick"
+          theme="dark"
+          mode="inline"
+          :defaultSelectedKeys="['0']"
+        >
           <a-sub-menu key="sub1">
             <span slot="title">
               <a-icon type="solution" />
@@ -21,6 +28,23 @@
             <a-menu-item key="3">Crear paciente</a-menu-item>
           </a-sub-menu>
         </a-menu>
+        <!-- Patient Menu -->
+        <a-menu
+          v-if="user.patient"
+          @click="handleClick"
+          theme="dark"
+          mode="inline"
+          :defaultSelectedKeys="['0']"
+        >
+          <a-sub-menu key="sub1">
+            <span slot="title">
+              <a-icon type="solution" />
+              <span>Instrumentos</span>
+            </span>
+            <a-menu-item key="0">Contestar prueba</a-menu-item>
+            <a-menu-item key="1">Mis pruebas</a-menu-item>
+          </a-sub-menu>
+        </a-menu>
       </a-layout-sider>
       <a-layout>
         <a-layout-header
@@ -32,7 +56,9 @@
             @click="()=> collapsed = !collapsed"
           />
         </a-layout-header>
+        <!-- Admin Content -->
         <a-layout-content
+          v-if="user.admin"
           :style="[!viewQuestionnaire ? { margin: '24px 16px', padding: '24px', background: '#fff', minHeight: '280px' } : {}]"
         >
           <Questionnaire
@@ -51,6 +77,7 @@
           <QuestionnaireList
             v-if="selectedOption === '0' && !viewQuestionnaire && !editQuestionnaire"
             v-bind:user="user"
+            v-bind:own="false"
             v-on:edit="handleEdit"
             v-on:get="handleGet"
           />
@@ -61,11 +88,38 @@
             v-if="selectedOption === '1' && !editQuestionnaire"
           />
           <div v-if="selectedOption === '2'">
-            <UserList />
+            <UserList v-on:edit="handleUserEdit" />
           </div>
           <div v-if="selectedOption === '3'">
             <UserForm v-on:done="handleUserDone" />
           </div>
+        </a-layout-content>
+        <!-- Patient Content -->
+        <a-layout-content
+          v-if="user.patient"
+          :style="[!viewQuestionnaire ? { margin: '24px 16px', padding: '24px', background: '#fff', minHeight: '280px' } : {}]"
+        >
+          <QuestionnaireList
+            v-if="selectedOption === '0' && !viewQuestionnaire"
+            v-bind:own="false"
+            v-bind:user="user"
+            v-on:edit="handleEdit"
+            v-on:get="handleGet"
+          />
+          <QuestionnaireList
+            v-if="selectedOption === '1' && !viewQuestionnaire"
+            v-bind:own="true"
+            v-bind:user="user"
+            v-on:edit="handleEdit"
+            v-on:get="handleGet"
+          />
+          <Questionnaire
+            v-on:exit="handleExit"
+            v-if="viewQuestionnaire"
+            v-bind:questionnaire="questionnaire"
+            v-bind:user="user"
+            v-bind:preview="false"
+          />
         </a-layout-content>
       </a-layout>
     </a-layout>
@@ -118,6 +172,10 @@ export default {
       this.editQuestionnaire = true;
       this.questionnaire = event;
     },
+    handleUserEdit(event) {
+      this.editUser = true;
+      this.user = event;
+    },
     handleGet(event) {
       this.viewQuestionnaire = true;
       this.questionnaire = event;
@@ -125,6 +183,11 @@ export default {
     handleExit() {
       this.viewQuestionnaire = false;
     }
+    /*eslint-disable*/
+  },
+  mounted() {
+    /*eslint-disable*/
+    console.log(this.user);
     /*eslint-disable*/
   }
 };

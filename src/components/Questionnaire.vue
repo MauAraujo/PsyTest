@@ -16,7 +16,7 @@
             :disabled="questionnaire.questions.length <= 1 || index === 0"
             @click="handlePrevious"
           >Anterior</a-button>
-          <a-button key="exit" type="danger" @click="handleExit">Salir</a-button>
+          <a-button key="exit" type="danger" @click="handleDone">Salir</a-button>
           <a-button
             key="next"
             v-if="index !== questionnaire.questions.length - 1"
@@ -39,7 +39,8 @@
 export default {
   props: {
     questionnaire: Object,
-    preview: Boolean
+    preview: Boolean,
+    user: Object
   },
   data() {
     return {
@@ -71,10 +72,29 @@ export default {
       this.$emit("exit");
     },
     handleDone() {
+      const axios = require("axios");
       this.handleNext();
       if (this.preview) {
         this.handleExit();
       } else {
+        const axiosParams = {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            Accept: "application/json"
+          }
+        };
+        axios.post(
+          `http://localhost:3000/users/${user.uid}/create/questionnaires`,
+          {
+            testName: this.finalValue.testName,
+            description: this.finalValue.description,
+            questions: this.finalValue.questions,
+            answers: this.finalValue.answers,
+            uid: this.user.uid,
+            lastAnswered: this.index,
+          },
+          axiosParams
+        );
       }
     }
   }

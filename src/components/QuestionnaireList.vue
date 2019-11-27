@@ -5,6 +5,7 @@
     itemLayout="horizontal"
     :dataSource="questionnaires"
   >
+    <!-- Admin Item -->
     <a-list-item slot="renderItem" slot-scope="item">
       <a-icon class="action-icon" slot="actions" type="eye" @click="onSelect(item)" />
       <a-icon class="action-icon" slot="actions" type="edit" @click="onEdit(item)" />
@@ -26,6 +27,13 @@
         <p>{{ModalText}}</p>
       </a-modal>
     </a-list-item>
+    <!-- Patient Item -->
+    <a-list-item slot="renderItem" slot-scope="item">
+      <a-icon class="action-icon" slot="actions" type="eye" @click="onSelect(item)" />
+      <a-list-item-meta :description="item.description">
+        <a slot="title">{{item.testName}}</a>
+      </a-list-item-meta>
+    </a-list-item>
     <a-empty
       v-if="questionnaires.length === 0"
       image="https://gw.alipayobjects.com/mdn/miniapp_social/afts/img/A*pevERLJC9v0AAAAAAAAAAABjAQAAAQ/original"
@@ -37,7 +45,8 @@
 <script>
 export default {
   props: {
-    user: Object
+    user: Object,
+    own: Boolean
   },
   data() {
     return {
@@ -51,6 +60,10 @@ export default {
     };
   },
   mounted() {
+    /*eslint-disable*/
+    console.log(this.own);
+    /*eslint-disable*/
+
     this.getData();
   },
   methods: {
@@ -89,6 +102,7 @@ export default {
       this.$emit("get", questionnaire);
     },
     getData() {
+      /*eslint-disable*/
       const axios = require("axios");
       const axiosParams = {
         headers: {
@@ -96,17 +110,33 @@ export default {
           Accept: "application/json"
         }
       };
-      /*eslint-disable*/
-      axios
-        .get(`http://localhost:3000/questionnaires/get`, axiosParams)
-        .then(response => {
-          console.log(response);
-          this.loading = false;
-          this.questionnaires = response.data !== null ? response.data : [];
-        })
-        .catch(error => {
-          console.log(error);
-        });
+      if (this.own) {
+        axios
+          .get(
+            `http://localhost:3000/user/${this.user.uid}/questionnaires/get`,
+            axiosParams
+          )
+          .then(response => {
+            console.log(response);
+            this.loading = false;
+            this.questionnaires = response.data !== null ? response.data : [];
+          })
+          .catch(error => {
+            console.log(error);
+          });
+      } else {
+        axios
+          .get(`http://localhost:3000/questionnaires/get`, axiosParams)
+          .then(response => {
+            console.log(response);
+            this.loading = false;
+            this.questionnaires = response.data !== null ? response.data : [];
+          })
+          .catch(error => {
+            console.log(error);
+          });
+      }
+
       /*eslint-disable*/
     },
     handleOk(questionnaire) {
