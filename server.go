@@ -389,7 +389,7 @@ func UserQuestionnaireHandler(w http.ResponseWriter, r *http.Request) {
 func initDB() {
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	mclient, err := mongo.Connect(ctx, options.Client().
-		ApplyURI("mongodb://192.168.100.44:27017,192.168.100.45:27018,192.168.100.46:27019/?replicaSet=rs0&readPreference=nearest"))
+		ApplyURI("mongodb://mac1:27017,mac2:27017,win1:27017/?replicaSet=rs0&readPreference=nearest"))
 
 	if err != nil {
 		log.Println("Error connecting to MongoDB")
