@@ -6,7 +6,7 @@
     :dataSource="questionnaires"
   >
     <!-- Admin Item -->
-    <a-list-item slot="renderItem" slot-scope="item">
+    <a-list-item :v-if="user.admin" slot="renderItem" slot-scope="item">
       <a-icon class="action-icon" slot="actions" type="eye" @click="onSelect(item)" />
       <a-icon class="action-icon" slot="actions" type="edit" @click="onEdit(item)" />
       <a-icon class="action-icon" slot="actions" type="delete" @click="showModal()" />
@@ -28,7 +28,7 @@
       </a-modal>
     </a-list-item>
     <!-- Patient Item -->
-    <a-list-item slot="renderItem" slot-scope="item">
+    <a-list-item :v-if="user.patient" slot="renderItem" slot-scope="item">
       <a-icon class="action-icon" slot="actions" type="eye" @click="onSelect(item)" />
       <a-list-item-meta :description="item.description">
         <a slot="title">{{item.testName}}</a>
